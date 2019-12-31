@@ -1,9 +1,33 @@
-import { PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import { Box3, Box3Helper, Color, Geometry, Matrix4, Object3D, PerspectiveCamera, Scene, Sphere, Vector3, WebGLRenderer } from 'three';
+
+export type Node = Object3D & {
+  boundingBox: Box3,
+  geometry?: Geometry,
+  boundingSphere?: Sphere
+};
+
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { PointCloudOctree, Potree } from '../src';
 
-// tslint:disable-next-line:no-duplicate-imports
-import * as THREE from 'three';
-const OrbitControls = require('three-orbit-controls')(THREE);
+const computeTransformedBoundingBox = (box: Box3, transform: Matrix4) => {
+  const vertices = [
+    new Vector3(box.min.x, box.min.y, box.min.z).applyMatrix4(transform),
+    new Vector3(box.min.x, box.min.y, box.min.z).applyMatrix4(transform),
+    new Vector3(box.max.x, box.min.y, box.min.z).applyMatrix4(transform),
+    new Vector3(box.min.x, box.max.y, box.min.z).applyMatrix4(transform),
+    new Vector3(box.min.x, box.min.y, box.max.z).applyMatrix4(transform),
+    new Vector3(box.min.x, box.max.y, box.max.z).applyMatrix4(transform),
+    new Vector3(box.max.x, box.max.y, box.min.z).applyMatrix4(transform),
+    new Vector3(box.max.x, box.min.y, box.max.z).applyMatrix4(transform),
+    new Vector3(box.max.x, box.max.y, box.max.z).applyMatrix4(transform)
+  ];
+
+  const boundingBox = new Box3();
+
+  boundingBox.setFromPoints(vertices);
+
+  return boundingBox;
+};
 
 export class Viewer {
   /**
@@ -21,11 +45,11 @@ export class Viewer {
   /**
    * The camera used to view the scene.
    */
-  camera: PerspectiveCamera = new PerspectiveCamera(45, NaN, 0.1, 1000);
+  camera: PerspectiveCamera;
   /**
    * Controls which update the position of the camera.
    */
-  cameraControls!: any;
+  cameraControls!: OrbitControls;
   /**
    * Out potree instance which handles updating point clouds, keeps track of loaded nodes, etc.
    */
@@ -42,6 +66,10 @@ export class Viewer {
    * requestAnimationFrame handle we can use to cancel the viewer loop.
    */
   private reqAnimationFrameHandle: number | undefined;
+
+  constructor(width: number, height: number) {
+    this.camera = new PerspectiveCamera(75, width / height, 0.1, 10000);
+  }
 
   /**
    * Initializes the viewer into the specified element.
@@ -112,6 +140,38 @@ export class Viewer {
     });
 
     this.pointClouds = [];
+  }
+
+  fitToScreen(): void {
+      // get bounding box
+      const box = new Box3();
+      this.scene.updateMatrixWorld();
+      for (const pointCloud of this.pointClouds) {
+        pointCloud.updateMatrixWorld(true);
+        const pointCloudBox = pointCloud.pcoGeometry.tightBoundingBox ? pointCloud.pcoGeometry.tightBoundingBox : pointCloud.boundingBox;
+        const boxWorld = computeTransformedBoundingBox(pointCloudBox, pointCloud.matrixWorld);
+        box.union(boxWorld);
+      }
+
+      const boxobj = new Box3Helper(box, new Color(0xff0000));
+      this.scene.add(boxobj);
+
+      const size = new Vector3();
+      box.getSize(size);
+      const center = new Vector3();
+      box.getCenter(center);
+
+      const boxWidth = Math.max(size.x, size.y); // long edge of the box when viewed from top;
+
+      const dist = boxWidth / 2 / Math.tan(Math.PI * this.camera.fov / 360);
+
+      this.camera.lookAt(center);
+      this.camera.position.copy(center);
+      this.camera.rotation.order = 'ZYX';
+      this.camera.position.z += dist;
+      this.camera.updateProjectionMatrix();
+      this.cameraControls.target = center;
+      this.cameraControls.update();
   }
 
   /**

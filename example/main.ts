@@ -1,14 +1,17 @@
-import { Vector3 } from 'three';
-import { PointCloudOctree } from '../src';
+import { PointCloudOctree, PointSizeType } from '../src';
 import { Viewer } from './viewer';
 
 require('./main.css');
+
 
 const targetEl = document.createElement('div');
 targetEl.className = 'container';
 document.body.appendChild(targetEl);
 
-const viewer = new Viewer();
+const { width, height } = targetEl.getBoundingClientRect();
+console.log(width, height);
+
+const viewer = new Viewer(width, height);
 viewer.initialize(targetEl);
 
 let pointCloud: PointCloudOctree | undefined;
@@ -38,20 +41,16 @@ loadBtn.addEventListener('click', () => {
   viewer
     .load(
       'cloud.js',
-      'https://raw.githubusercontent.com/potree/potree/develop/pointclouds/lion_takanawa/',
+      'https://raw.githubusercontent.com/potree/potree/develop/pointclouds/vol_total/',
     )
     .then(pco => {
       pointCloud = pco;
-      pointCloud.rotateX(-Math.PI / 2);
       pointCloud.material.size = 1.0;
-
-      const camera = viewer.camera;
-      camera.far = 1000;
-      camera.updateProjectionMatrix();
-      camera.position.set(0, 0, 10);
-      camera.lookAt(new Vector3());
+      pointCloud.material.pointSizeType = PointSizeType.ADAPTIVE;
 
       viewer.add(pco);
+
+      viewer.fitToScreen();
     })
     .catch(err => console.error(err));
 });
