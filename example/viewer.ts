@@ -1,12 +1,6 @@
-import { Box3, Box3Helper, Color, Geometry, Matrix4, Object3D, PerspectiveCamera, Scene, Sphere, Vector3, WebGLRenderer } from 'three';
+import { Box3, Box3Helper, Color,  Matrix4, PerspectiveCamera, Scene,  Vector3, WebGLRenderer } from 'three';
 
-export type Node = Object3D & {
-  boundingBox: Box3,
-  geometry?: Geometry,
-  boundingSphere?: Sphere
-};
-
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { PointCloudOctree, Potree } from '../src';
 
 const computeTransformedBoundingBox = (box: Box3, transform: Matrix4) => {

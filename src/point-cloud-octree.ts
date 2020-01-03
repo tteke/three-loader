@@ -1,9 +1,11 @@
+import { Profile, ProfileRequest } from 'profile';
 import {
   Box3,
   BufferAttribute,
   BufferGeometry,
   Camera,
   Geometry,
+  Line3,
   LinearFilter,
   Material,
   Matrix4,
@@ -80,6 +82,7 @@ export class PointCloudOctree extends PointCloudTree {
   visibleGeometry: PointCloudOctreeGeometryNode[] = [];
   numVisiblePoints: number = 0;
   showBoundingBox: boolean = false;
+  profileRequests: ProfileRequest[];
   private visibleBounds: Box3 = new Box3();
   private visibleNodeTextureOffsets = new Map<string, number>();
   private pickState: IPickState | undefined;
@@ -493,6 +496,28 @@ export class PointCloudOctree extends PointCloudTree {
     }
 
     return this.getPickPoint(hit, nodes);
+  }
+
+  nodeIntersectsProfile(node: PointCloudOctreeGeometryNode, profile: Profile): boolean {
+    const bbWorld = node.boundingBox.clone().applyMatrix4(this.matrixWorld);
+    const bsWorld = bbWorld.getBoundingSphere(new Sphere());
+
+    let intersects = false;
+
+    for (let i = 0; i < profile.points.length - 1; i++) {
+
+      const start = new Vector3(profile.points[i + 0].x, profile.points[i + 0].y, bsWorld.center.z);
+      const end = new Vector3(profile.points[i + 1].x, profile.points[i + 1].y, bsWorld.center.z);
+
+      const closest = new Line3(start, end).closestPointToPoint(bsWorld.center, true, new Vector3());
+      const distance = closest.distanceTo(bsWorld.center);
+
+      intersects = intersects || (distance < (bsWorld.radius + profile.width));
+    }
+
+    // console.log(`${node.name}: ${intersects}`);
+
+    return intersects;
   }
 
   private getPickPoint(hit: PointCloudHit | null, nodes: PointCloudOctreeNode[]): PickPoint | null {
