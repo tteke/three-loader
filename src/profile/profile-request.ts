@@ -12,6 +12,12 @@ export interface ProfileSegment {
   points: Points;
 }
 
+export interface ProfileRequestCallback {
+  onProgress: Function;
+  onCancel: Function;
+  onFinished: Function;
+}
+
 export class ProfileData {
   profile: Profile;
   segments: ProfileSegment[] = [];
@@ -58,11 +64,6 @@ export class ProfileData {
   }
 }
 
-type ProfileRequestCallback = {
-  onProgress: Function,
-  onCancel: Function,
-  onFinished: Function
-};
 
 export class ProfileRequest {
   pointcloud: PointCloudOctree;

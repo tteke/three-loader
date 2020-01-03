@@ -1,4 +1,3 @@
-import { Profile, ProfileRequest } from 'profile';
 import {
   Box3,
   BufferAttribute,
@@ -29,6 +28,7 @@ import { PointCloudOctreeGeometry } from './point-cloud-octree-geometry';
 import { PointCloudOctreeGeometryNode } from './point-cloud-octree-geometry-node';
 import { PointCloudOctreeNode } from './point-cloud-octree-node';
 import { PointCloudTree } from './point-cloud-tree';
+import { Profile, ProfileRequest, ProfileRequestCallback } from './profile';
 import { IPointCloudTreeNode, IPotree, PickPoint, PointCloudHit } from './types';
 import { computeTransformedBoundingBox } from './utils/bounds';
 import { clamp } from './utils/math';
@@ -82,7 +82,7 @@ export class PointCloudOctree extends PointCloudTree {
   visibleGeometry: PointCloudOctreeGeometryNode[] = [];
   numVisiblePoints: number = 0;
   showBoundingBox: boolean = false;
-  profileRequests: ProfileRequest[];
+  profileRequests: ProfileRequest[] = [];
   private visibleBounds: Box3 = new Box3();
   private visibleNodeTextureOffsets = new Map<string, number>();
   private pickState: IPickState | undefined;
@@ -519,6 +519,11 @@ export class PointCloudOctree extends PointCloudTree {
 
     return intersects;
   }
+    getPointsInsideProfile(profile: Profile, maxDepth: number, callback: ProfileRequestCallback): ProfileRequest {
+      const request = new ProfileRequest(this, profile, maxDepth, callback);
+      this.profileRequests.push(request);
+      return request;
+    }
 
   private getPickPoint(hit: PointCloudHit | null, nodes: PointCloudOctreeNode[]): PickPoint | null {
     if (!hit) {
