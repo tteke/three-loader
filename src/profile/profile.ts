@@ -82,7 +82,7 @@ export class Profile extends Object3D {
       type: 'marker_added',
       profile: this,
       sphere: sphere
-    }
+    };
 
     this.dispatchEvent(event);
     this.setPosition(this.points.length - 1, point);

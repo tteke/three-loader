@@ -1,8 +1,10 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "baseUrl": "./",
+    "baseUrl": "../src/",
     "sourceMap": true,
+    "declaration": true,
+    "declarationDir": "../build/declarations",
     "module": "es2015",
     "moduleResolution": "node",
     "strict": true,
@@ -12,12 +14,12 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "alwaysStrict": true,
-    "target": "es5",
+    "target": "es6",
     "experimentalDecorators": true,
     "typeRoots": ["../node_modules/@types"],
     "lib": ["es2017", "dom"],
     "plugins": []
   },
-  "include": ["**/*.ts"],
-  "exclude": ["build", "node_modules"]
+  "include": ["../src/**/*.ts"],
+  "exclude": ["../build", "../node_modules"]
 }

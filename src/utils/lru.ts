@@ -1,3 +1,4 @@
+import { DEFAULT_POINT_BUDGET } from '../constants';
 import { IPointCloudTreeNode } from '../types';
 
 export type Node = IPointCloudTreeNode;
@@ -156,3 +157,5 @@ export class LRU {
     }
   }
 }
+
+export let lru = new LRU(DEFAULT_POINT_BUDGET);

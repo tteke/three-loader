@@ -25,7 +25,7 @@ import { isGeometryNode, isTreeNode } from './type-predicates';
 import { IPointCloudTreeNode, IPotree, IVisibilityUpdateResult } from './types';
 import { BinaryHeap } from './utils/binary-heap';
 import { Box3Helper } from './utils/box3-helper';
-import { LRU } from './utils/lru';
+import { LRU, lru } from './utils/lru';
 
 export class QueueItem {
   constructor(
@@ -42,7 +42,7 @@ export class Potree implements IPotree {
 
   maxNumNodesLoading: number = MAX_NUM_NODES_LOADING;
   features = FEATURES;
-  lru = new LRU(this._pointBudget);
+  lru: LRU = lru;
 
   loadPointCloud(
     url: string,
