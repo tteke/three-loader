@@ -44,6 +44,18 @@ export class Profile extends Object3D {
     });
   }
 
+  public setWidth(width: number): void {
+    this.width = width;
+
+    const event = {
+      type: 'width_changed',
+      profile: this,
+      width: width
+    };
+
+    this.dispatchEvent(event);
+  }
+
   public addMarker(point: Vector3): void {
     this.points.push(point);
 

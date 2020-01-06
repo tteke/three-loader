@@ -519,8 +519,8 @@ export class PointCloudOctree extends PointCloudTree {
 
     return intersects;
   }
-    getPointsInsideProfile(profile: Profile, maxDepth: number, callback: ProfileRequestCallback): ProfileRequest {
-      const request = new ProfileRequest(this, profile, maxDepth, callback);
+    getPointsInsideProfile(profile: Profile, maxDepth: number | null, callback: ProfileRequestCallback): ProfileRequest {
+      const request = new ProfileRequest(this, profile, maxDepth ? maxDepth : undefined, callback);
       this.profileRequests.push(request);
       return request;
     }

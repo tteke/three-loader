@@ -65,6 +65,16 @@ export class Potree implements IPotree {
         continue;
       }
 
+      const start = performance.now();
+
+      for (const profileRequest of pointCloud.profileRequests) {
+        profileRequest.update();
+        const duration = performance.now() - start;
+        if (duration > 5) {
+          break;
+        }
+      }
+
       pointCloud.updateMaterial(
         pointCloud.material,
         pointCloud.visibleNodes,

@@ -225,7 +225,7 @@ export class PointCloudMaterial extends RawShaderMaterial {
   @requiresShaderUpdate() weighted: boolean = false;
   @requiresShaderUpdate() pointColorType: PointColorType = PointColorType.RGB;
   @requiresShaderUpdate() pointSizeType: PointSizeType = PointSizeType.ADAPTIVE;
-  @requiresShaderUpdate() clipMode: ClipMode = ClipMode.DISABLED;
+  @requiresShaderUpdate() clipMode: ClipMode = ClipMode.HIGHLIGHT_INSIDE;
   @requiresShaderUpdate() useEDL: boolean = false;
   @requiresShaderUpdate() shape: PointShape = PointShape.SQUARE;
   @requiresShaderUpdate() treeType: TreeType = TreeType.OCTREE;

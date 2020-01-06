@@ -2,7 +2,7 @@ import { Box3, Line3, Matrix4, Plane, Sphere, Vector3 } from 'three';
 import { PointCloudOctree, PointCloudOctreeGeometryNode } from '../';
 import { BinaryHeap } from '../utils/binary-heap';
 import { lru, LRU } from '../utils/lru';
-import { Attribute, Points } from './Points';
+import { Attribute, Points } from './points';
 import { Profile } from './profile';
 
 export interface ProfileSegment {
@@ -76,10 +76,15 @@ export class ProfileRequest {
   pointsServed = 0;
   highestLevelServed = 0;
   cancelRequested = false;
-  priorityQueue: BinaryHeap<{ node: PointCloudOctreeGeometryNode, weight: number}> = new BinaryHeap((x: any) => 1 / x.weight);
+  priorityQueue: BinaryHeap<{ node: PointCloudOctreeGeometryNode, weight: number }> = new BinaryHeap((x: any) => 1 / x.weight);
   lru: LRU = lru;
 
-  constructor(pointcloud: PointCloudOctree, profile: Profile, maxDepth: number = Number.MAX_VALUE, callback: ProfileRequestCallback) {
+  constructor(
+    pointcloud: PointCloudOctree,
+    profile: Profile,
+    maxDepth: number = Number.MAX_VALUE,
+    callback: ProfileRequestCallback
+  ) {
     this.pointcloud = pointcloud;
     this.profile = profile;
     this.callback = callback;
