@@ -1,7 +1,7 @@
 import { Box3 } from 'three';
 
 type TypedArray = Uint8Array | Uint16Array | Uint32Array | Float32Array | Float64Array;
-export type Attribute = 'position' | 'color' | 'indices' | 'mileage' | 'intensity' | 'classification' | 'returnNumber' | 'numberOfReturns' | 'pointSourceId';
+export type Attribute = 'position' | 'color' | 'indices' | 'mileage' | 'intensity' | 'classification' | 'returnNumber' | 'numberOfReturns' | 'pointSourceID';
 
 type Data = {
   [A in Attribute]: TypedArray;
@@ -9,6 +9,7 @@ type Data = {
 
 export class Points {
   boundingBox: Box3 = new Box3();
+  projectedBox: Box3 = new Box3();
   numPoints: number = 0;
   data: Data = {
     position: new Float32Array(),
@@ -19,7 +20,7 @@ export class Points {
     classification: new Uint8Array(),
     returnNumber: new Uint8Array(),
     numberOfReturns: new Uint8Array(),
-    pointSourceId: new Uint16Array()
+    pointSourceID: new Uint16Array()
   };
 
   add(points: Points) {

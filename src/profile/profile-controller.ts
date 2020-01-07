@@ -1,6 +1,170 @@
+import { Box3, BufferAttribute, BufferGeometry, Object3D, Points, TypedArray, Vector3 } from 'three';
+import { PointCloudMaterial } from '../materials/point-cloud-material';
 import { PointCloudOctree } from '../point-cloud-octree';
+import { Points as PotreePoints } from './points';
 import { Profile } from './profile';
 import { ProfileData, ProfileRequest } from './profile-request';
+
+type IBufferAttribute = BufferAttribute & { updateRange?: { offset?: number, count?: number } };
+type IPoints = Points & { geometry: BufferGeometry };
+
+const materialPool: Set<PointCloudMaterial> = new Set();
+
+export const getMaterialInstance: () => (PointCloudMaterial) = () =>  {
+    let instance = materialPool.values().next().value;
+    if (!instance) {
+      instance = new PointCloudMaterial();
+    } else {
+      materialPool.delete(instance);
+    }
+
+    return instance;
+};
+
+export const releaseMaterialInstance: (instance: PointCloudMaterial) => void = (instance) => {
+  materialPool.add(instance);
+};
+
+export class ProfilePointCloudEntry {
+  points: PotreePoints[] = [];
+  material: PointCloudMaterial;
+  sceneNode: Object3D = new Object3D();
+  currentBatch: IPoints | null = null;
+  projectedBox: Box3 = new Box3();
+
+  constructor() {
+    const material = getMaterialInstance();
+    material.uniforms.minSize.value = 2;
+    material.uniforms.maxSize.value = 2;
+    material.opacity = 1.0;
+    this.material = material;
+  }
+
+  dispose(): void {
+    for (const child of this.sceneNode.children as Points[]) {
+      releaseMaterialInstance(child.material as PointCloudMaterial);
+      child.geometry.dispose();
+    }
+
+    this.sceneNode.children.length = 0;
+  }
+
+  addPoints(points: PotreePoints): void {
+    this.points.push(points);
+
+    const batchSize = 10 * 1000;
+
+    const createNewBatch = () => {
+      const geo = new BufferGeometry();
+
+      const buffer = {
+        position: new Float32Array(3 * batchSize),
+        color: new Uint8Array(4 * batchSize),
+        intensity: new Uint16Array(batchSize),
+        classification: new Uint8Array(batchSize),
+        returnNumber: new Uint8Array(batchSize),
+        numberOfReturns: new Uint8Array(batchSize),
+        pointSourceID: new Uint16Array(batchSize)
+      };
+
+      geo.setAttribute('position', new BufferAttribute(buffer.position, 3));
+      geo.setAttribute('color', new BufferAttribute(buffer.color, 4, true));
+      geo.setAttribute('intensity', new BufferAttribute(buffer.intensity, 1, false));
+      geo.setAttribute('classification', new BufferAttribute(buffer.classification, 1, false));
+      geo.setAttribute('returnNumber', new BufferAttribute(buffer.returnNumber, 1, false));
+      geo.setAttribute('numberOfReturns', new BufferAttribute(buffer.numberOfReturns, 1, false));
+      geo.setAttribute('pointSourceID', new BufferAttribute(buffer.pointSourceID, 1, false));
+
+      geo.drawRange.start = 0;
+      geo.drawRange.count = 0;
+
+      this.currentBatch = new Points(geo, this.material) as IPoints;
+      this.sceneNode.add(this.currentBatch);
+    };
+
+    if (!this.currentBatch) {
+      createNewBatch();
+    }
+
+    const updateRange = {
+      start: this.currentBatch!.geometry.drawRange.count || 0,
+      count: 0
+    };
+
+    const projectedBox = new Box3();
+
+    for (let i = 0; i < points.numPoints; i++) {
+      if (updateRange.start + updateRange.count >= batchSize && this.currentBatch) {
+        // finalize, move onto next abatch
+        for (const key of Object.keys(this.currentBatch.geometry.attributes)) {
+          const attribute: IBufferAttribute = this.currentBatch.geometry.attributes[key] as BufferAttribute;
+          attribute.updateRange = {
+            offset: updateRange.start,
+            count: updateRange.count
+          };
+          attribute.needsUpdate = true;
+        }
+        this.currentBatch.geometry.computeBoundingBox();
+        this.currentBatch.geometry.computeBoundingSphere();
+
+        createNewBatch();
+        updateRange.start = 0, updateRange.count = 0;
+      }
+
+      const x = points.data.mileage[i];
+      const y = 0;
+      const z = points.data.position[3 * i + 2];
+
+      projectedBox.expandByPoint(new Vector3(x, y, z));
+      const currentIndex = updateRange.start + updateRange.count;
+      const attributes = this.currentBatch!.geometry.attributes;
+
+      (attributes.position.array as TypedArray).set([x, y, z], currentIndex * 3);
+
+      if (points.data.color) {
+        (attributes.color.array as TypedArray).set([
+          points.data.color[4 * i + 0],
+          points.data.color[4 * i + 1],
+          points.data.color[4 * i + 2],
+          255
+        ], currentIndex * 4);
+      }
+
+      if (points.data.intensity) {
+        (attributes.intensity.array as TypedArray).set([points.data.intensity[i]], currentIndex);
+      }
+
+      if (points.data.classification) {
+        (attributes.classification.array as TypedArray).set([points.data.classification[i]], currentIndex);
+      }
+
+      if (points.data.returnNumber) {
+        (attributes.returnNumber.array as TypedArray).set([points.data.returnNumber[i]], currentIndex);
+      }
+
+      if (points.data.numberOfReturns) {
+        (attributes.numberOfReturns.array as TypedArray).set([points.data.numberOfReturns[i]], currentIndex);
+      }
+
+      if (points.data.pointSourceID) {
+        (attributes.pointSourceID.array as TypedArray).set([points.data.pointSourceID[i]], currentIndex);
+      }
+
+      updateRange.count++;
+      this.currentBatch!.geometry.drawRange.count++;
+    }
+
+    for (const key of Object.keys(this.currentBatch!.geometry.attributes)) {
+      const attribute: IBufferAttribute = this.currentBatch!.geometry.attributes[key] as BufferAttribute;
+      attribute.updateRange.offset = updateRange.start;
+      attribute.updateRange.count = updateRange.count;
+      attribute.needsUpdate = true;
+    }
+
+    points.projectedBox = projectedBox;
+    this.projectedBox = this.points.reduce((a, i) => a.union(i.projectedBox), new Box3());
+  }
+}
 
 export class ProfileController {
   profile: Profile | null = null;
@@ -9,6 +173,10 @@ export class ProfileController {
   scheduledRecomputeTime: number | null = null;
   requests: ProfileRequest[] = [];
   pointclouds: Set<PointCloudOctree> = new Set();
+  profilePCEntries: Map<PointCloudOctree, ProfilePointCloudEntry> = new Map();
+  pcRoot: Object3D = new Object3D();
+  projectedBox: Box3 = new Box3();
+  renderTriggerListeners: Set<Function> = new Set();
 
   setProfile(profile: Profile): void {
     if (this.profile !== null && this.profile !== profile) {
@@ -57,12 +225,38 @@ export class ProfileController {
     pointcloud.visible = true;
 
     for (const segment of progress.segments) {
-      console.log(segment.points.data);
+      let entry = this.profilePCEntries.get(pointcloud);
+
+      if (!entry) {
+        entry = new ProfilePointCloudEntry();
+        this.profilePCEntries.set(pointcloud, entry);
+      }
+
+      entry.addPoints(segment.points);
+
+      this.pcRoot.add(entry.sceneNode);
+      this.projectedBox.union(entry.projectedBox);
+    }
+
+    this.render();
+  }
+
+  addRenderTriggerListener(fn: Function): void {
+    this.renderTriggerListeners.add(fn);
+  }
+
+  removeRenderTriggerListner(fn: Function): void {
+    if (this.renderTriggerListeners.has(fn)) {
+      this.renderTriggerListeners.delete(fn);
     }
   }
 
   finishLevelThenCancel(): void {
+    for (const request of this.requests) {
+      request.finishLevelThenCancel();
+    }
 
+    this.requests = [];
   }
 
   recompute(): void {
@@ -97,6 +291,39 @@ export class ProfileController {
       });
 
       this.requests.push(request);
+    }
+  }
+
+  render(): void {
+    for (const [pointcloud, entry] of this.profilePCEntries) {
+      const material = entry.material;
+
+      material.uniforms.uColor = pointcloud.material.uniforms.uColor;
+      material.uniforms.intensityRange.value = pointcloud.material.uniforms.intensityRange.value;
+      material.elevationRange = pointcloud.material.elevationRange;
+
+      material.rgbGamma = pointcloud.material.rgbGamma;
+      material.rgbContrast = pointcloud.material.rgbContrast;
+      material.rgbBrightness = pointcloud.material.rgbBrightness;
+
+      material.intensityRange = pointcloud.material.intensityRange;
+      material.intensityGamma = pointcloud.material.intensityGamma;
+      material.intensityContrast = pointcloud.material.intensityContrast;
+      material.intensityBrightness = pointcloud.material.intensityBrightness;
+
+      material.uniforms.wRGB.value = pointcloud.material.uniforms.wRGB.value;
+      material.uniforms.wIntensity.value = pointcloud.material.uniforms.wIntensity.value;
+      material.uniforms.wElevation.value = pointcloud.material.uniforms.wElevation.value;
+      material.uniforms.wClassification.value = pointcloud.material.uniforms.wClassification.value;
+      material.uniforms.wReturnNumber.value = pointcloud.material.uniforms.wReturnNumber.value;
+      material.uniforms.wSourceID.value = pointcloud.material.uniforms.wSourceID.value;
+
+      material.classification = pointcloud.material.classification;
+      material.uniforms.classificationLUT.value.image.data = pointcloud.material.uniforms.classificationLUT.value.image.data;
+    }
+
+    for (const listener of this.renderTriggerListeners) {
+      listener();
     }
   }
 }

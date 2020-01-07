@@ -56,7 +56,7 @@ loadBtn.addEventListener('click', () => {
 
       controller.addPointcloud(pco);
       const profile = new Profile();
-      
+
       profile.setWidth(10);
 
       profile.addMarker(new Vector3(589997.02, 231327.75, 755.73));
@@ -65,7 +65,7 @@ loadBtn.addEventListener('click', () => {
 
       controller.setProfile(profile);
 
-      const boxes = []
+      const boxes = [];
       boxes.push(...profile.boxes);
 
       const clipBoxes = boxes.map( box => {
