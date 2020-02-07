@@ -17,3 +17,18 @@ body,
 .btn-container button {
   margin-right: 10px;
 }
+
+.profile-container {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 800px;
+  height: 500px;
+  visibility: hidden;
+  z-index: 2;
+  background: gray;
+}
+
+.profile-container.active {
+  visibility: visible;
+}

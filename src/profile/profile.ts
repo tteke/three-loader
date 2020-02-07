@@ -23,7 +23,7 @@ export class Profile extends Object3D {
   width: number = 1;
   height: number = 20;
   _modifiable: boolean = true;
-  sphereGeometry: SphereGeometry = new SphereGeometry(0.4, 10, 10);
+  sphereGeometry: SphereGeometry = new SphereGeometry(4, 10, 10);
 
   color: Color = new Color(0xff0000);
   lineColor: Color = new Color(0xff0000);

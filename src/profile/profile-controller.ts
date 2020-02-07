@@ -1,4 +1,4 @@
-import { Box3, BufferAttribute, BufferGeometry, Object3D, Points, TypedArray, Vector3 } from 'three';
+import { Box3, BufferAttribute, BufferGeometry, EventDispatcher, Object3D, Points, TypedArray, Vector3, OrthographicCamera } from 'three';
 import { PointCloudMaterial } from '../materials/point-cloud-material';
 import { PointCloudOctree } from '../point-cloud-octree';
 import { Points as PotreePoints } from './points';
@@ -115,6 +115,10 @@ export class ProfilePointCloudEntry {
       const y = 0;
       const z = points.data.position[3 * i + 2];
 
+      if (z < 700) {
+        console.log(z);
+      }
+
       projectedBox.expandByPoint(new Vector3(x, y, z));
       const currentIndex = updateRange.start + updateRange.count;
       const attributes = this.currentBatch!.geometry.attributes;
@@ -166,7 +170,7 @@ export class ProfilePointCloudEntry {
   }
 }
 
-export class ProfileController {
+export class ProfileController extends EventDispatcher {
   profile: Profile | null = null;
   numPoints: number = 0;
   threshold: number = 60 * 1000;
@@ -177,6 +181,8 @@ export class ProfileController {
   pcRoot: Object3D = new Object3D();
   projectedBox: Box3 = new Box3();
   renderTriggerListeners: Set<Function> = new Set();
+  progressListeners: Set<Function> = new Set();
+  scale: Vector3 = new Vector3(1, 1, 1);
 
   setProfile(profile: Profile): void {
     if (this.profile !== null && this.profile !== profile) {
@@ -236,9 +242,33 @@ export class ProfileController {
 
       this.pcRoot.add(entry.sceneNode);
       this.projectedBox.union(entry.projectedBox);
+      this.dispatchEvent({
+        type: 'recomputed_segment',
+        segment: segment
+      });
     }
 
-    this.render();
+    this.dispatchEvent({
+      type: 'recompute_finished'
+    });
+  }
+
+  setScaleFromDimensions(width: number, height: number, camera?: OrthographicCamera): void{
+    const sx = width / Math.abs(this.projectedBox.max.x - this.projectedBox.min.x);
+    const sy = height / Math.abs(this.projectedBox.max.z - this.projectedBox.min.z);
+    const scale = Math.min(sx, sy);
+
+    const center = this.projectedBox.getCenter(new Vector3());
+    this.scale.set(scale, scale, 1);
+
+    if (camera) {
+      camera.position.copy(center);
+      camera.left = (-width / 2) * this.scale.x;
+      camera.right = (+width / 2) * this.scale.x;
+      camera.top = (+height / 2) * this.scale.y;
+      camera.bottom = (-height / 2) * this.scale.y;
+      camera.updateProjectionMatrix();
+    }
   }
 
   addRenderTriggerListener(fn: Function): void {
@@ -248,6 +278,16 @@ export class ProfileController {
   removeRenderTriggerListner(fn: Function): void {
     if (this.renderTriggerListeners.has(fn)) {
       this.renderTriggerListeners.delete(fn);
+    }
+  }
+
+  addProgressListener(fn: Function): void {
+    this.progressListeners.add(fn);
+  }
+
+  removeProgressListener(fn: Function): void {
+    if (this.progressListeners.has(fn)) {
+      this.progressListeners.delete(fn);
     }
   }
 
@@ -295,32 +335,32 @@ export class ProfileController {
   }
 
   render(): void {
-    for (const [pointcloud, entry] of this.profilePCEntries) {
-      const material = entry.material;
+    // for (const [pointcloud, entry] of this.profilePCEntries) {
+      // const material = entry.material;
 
-      material.uniforms.uColor = pointcloud.material.uniforms.uColor;
-      material.uniforms.intensityRange.value = pointcloud.material.uniforms.intensityRange.value;
-      material.elevationRange = pointcloud.material.elevationRange;
+      // material.uniforms.uColor = pointcloud.material.uniforms.uColor;
+      // material.uniforms.intensityRange.value = pointcloud.material.uniforms.intensityRange.value;
+      // material.elevationRange = pointcloud.material.elevationRange;
 
-      material.rgbGamma = pointcloud.material.rgbGamma;
-      material.rgbContrast = pointcloud.material.rgbContrast;
-      material.rgbBrightness = pointcloud.material.rgbBrightness;
+      // material.rgbGamma = pointcloud.material.rgbGamma;
+      // material.rgbContrast = pointcloud.material.rgbContrast;
+      // material.rgbBrightness = pointcloud.material.rgbBrightness;
 
-      material.intensityRange = pointcloud.material.intensityRange;
-      material.intensityGamma = pointcloud.material.intensityGamma;
-      material.intensityContrast = pointcloud.material.intensityContrast;
-      material.intensityBrightness = pointcloud.material.intensityBrightness;
+      // material.intensityRange = pointcloud.material.intensityRange;
+      // material.intensityGamma = pointcloud.material.intensityGamma;
+      // material.intensityContrast = pointcloud.material.intensityContrast;
+      // material.intensityBrightness = pointcloud.material.intensityBrightness;
 
-      material.uniforms.wRGB.value = pointcloud.material.uniforms.wRGB.value;
-      material.uniforms.wIntensity.value = pointcloud.material.uniforms.wIntensity.value;
-      material.uniforms.wElevation.value = pointcloud.material.uniforms.wElevation.value;
-      material.uniforms.wClassification.value = pointcloud.material.uniforms.wClassification.value;
-      material.uniforms.wReturnNumber.value = pointcloud.material.uniforms.wReturnNumber.value;
-      material.uniforms.wSourceID.value = pointcloud.material.uniforms.wSourceID.value;
+      // material.uniforms.wRGB.value = pointcloud.material.uniforms.wRGB.value;
+      // material.uniforms.wIntensity.value = pointcloud.material.uniforms.wIntensity.value;
+      // material.uniforms.wElevation.value = pointcloud.material.uniforms.wElevation.value;
+      // material.uniforms.wClassification.value = pointcloud.material.uniforms.wClassification.value;
+      // material.uniforms.wReturnNumber.value = pointcloud.material.uniforms.wReturnNumber.value;
+      // material.uniforms.wSourceID.value = pointcloud.material.uniforms.wSourceID.value;
 
-      material.classification = pointcloud.material.classification;
-      material.uniforms.classificationLUT.value.image.data = pointcloud.material.uniforms.classificationLUT.value.image.data;
-    }
+      // material.classification = pointcloud.material.classification;
+      // material.uniforms.classificationLUT.value.image.data = pointcloud.material.uniforms.classificationLUT.value.image.data;
+    // }
 
     for (const listener of this.renderTriggerListeners) {
       listener();

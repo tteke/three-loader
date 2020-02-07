@@ -1,4 +1,14 @@
-import { Box3, Box3Helper, Color,  Matrix4, PerspectiveCamera, Scene,  Vector3, WebGLRenderer } from 'three';
+import {
+  AmbientLight,
+  Box3,
+  Box3Helper,
+  Color,
+  DirectionalLight,
+  Matrix4,
+  PerspectiveCamera,
+  Scene,
+  Vector3,
+  WebGLRenderer } from 'three';
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { PointCloudOctree, Potree } from '../src';
@@ -63,6 +73,14 @@ export class Viewer {
 
   constructor(width: number, height: number) {
     this.camera = new PerspectiveCamera(75, width / height, 0.1, 10000);
+
+    const directionalLight = new DirectionalLight(0xffffff, 0.5);
+    directionalLight.position.set(10, 10, 10);
+    directionalLight.lookAt(new Vector3(0, 0, 0));
+    const ambientLight = new AmbientLight(0x555555);
+
+    this.scene.add(directionalLight);
+    this.scene.add(ambientLight);
   }
 
   /**
